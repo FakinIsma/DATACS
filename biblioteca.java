@@ -8,6 +8,9 @@ import java.nio.file.Path;
 import java.time.LocalDate;
 import java.util.Scanner;
 
+import static java.nio.file.StandardCopyOption.ATOMIC_MOVE;
+import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
+
 public class biblioteca {
     public static void main(String[] args) {
         Scanner sc = new Scanner(System.in);
@@ -15,6 +18,7 @@ public class biblioteca {
             System.out.println("Introduzca su número de socio completo:");
             int numSocio = sc.nextInt();
             boolean terminado = false;
+            try{
             while(terminado!=true) {
                 System.out.println("-------OPCIONES-------");
                 System.out.println("Libros disponibles");
@@ -23,10 +27,10 @@ public class biblioteca {
                 System.out.println("Devolver libro prestado");
                 System.out.println("Salir");
                 String respuesta = sc.nextLine();
-                try {
                     while (!respuesta.equals("Salir")) {
-                        if (respuesta.equals("libros disponibles")) {
-                            Path biblio = Path.of("library/books");
+                        String eleccion = sc.nextLine();
+                        if (respuesta.equals("Libros disponibles")|eleccion.equals("Libros disponibles")) {
+                            Path biblio = Path.of("src/library/books");
                             try (DirectoryStream<Path> ds = Files.newDirectoryStream(biblio)) {
                                 for (Path p : ds) {
                                     System.out.println(p);
@@ -35,20 +39,26 @@ public class biblioteca {
                                 e.printStackTrace();
                             }
                         }
-                        else if(respuesta.equals("Tomar prestado libro")){
+                        else if(respuesta.equals("Tomar prestado libro")|eleccion.equals("Tomar prestado libro")){
                             System.out.println("¿Que libro desea mover?");
                             try {
-                                String eleMove = sc.nextLine();//¿Se tiene que poner .pdf al elegir la película
-                                Path origen = Path.of("library/books/"+eleMove);//(creo que esta bien)no se como hacer que el libro introducido por scanner sea el libro que se va a buscar en books/
-                                Path destino = Path.of("library/rental/"+numSocio);//lo mismo con el numero de socio
-                                //aqui falta el codigo de mover la pelicula de un fichero a otro, crear carpeta del numSocio si no existe
-                                Path texto = Path.of("library/rentals/rentals.txt");
+                                String eleMove = sc.nextLine();
+                                Path origen = Path.of("src/library/books/"+eleMove);
+                                Path destinoCarpeta = Path.of("src/library/rentals/"+numSocio);
+                                Path destinoArchivo = destinoCarpeta.resolve(eleMove);
+                                Files.createDirectories(destinoCarpeta.getParent());
+                                if (Files.notExists(destinoCarpeta)) {
+                                    Files.createDirectory(destinoCarpeta);
+                                }
+                                Files.move(origen, destinoArchivo, REPLACE_EXISTING);
+                                System.out.println("El libro has sido alquilado correctamente");
+                                Path texto = Path.of("src/library/rentals/rentals.txt");
                                 if (!Files.exists(texto)) {
                                     Files.createFile(texto);
                                 }
                                 try (BufferedWriter bw = Files.newBufferedWriter(texto, StandardCharsets.UTF_8)) {
                                     LocalDate fechaActual = LocalDate.now();
-                                    bw.write("ID: "+numSocio+" Pélicula: "+eleMove+"pdf Fecha: "+fechaActual);
+                                    bw.write("ID: "+numSocio+" Película: "+eleMove+" Fecha: "+fechaActual);
                                     bw.newLine();
                                 } catch (Exception e) {
                                     e.printStackTrace();
@@ -58,14 +68,26 @@ public class biblioteca {
                                 e.printStackTrace();
                             }
                         }
-                        else if(respuesta.equals("Devolver libro prestado")){
-                            //Se comprueba que el usuario tiene el libro prestado, se mueve de su carpeta de libros (library/rental/{id_usuario}) a library/books
+                        else if(respuesta.equals("Ver libros listados")|eleccion.equals("Ver libros listados")){
+                            Path listado = Path.of("src/library/rentals/"+numSocio);
+                            //podria poner un if(si el fichero no esta vacio hace esto )else("Este usuario no tiene peliculas")
+                            try (DirectoryStream<Path> ds = Files.newDirectoryStream(listado)) {
+                                for (Path p : ds) {
+                                    System.out.println(p);
+                                }
+                            } catch (Exception e) {
+                                e.printStackTrace();
+                            }
+                        }
+                        else if(respuesta.equals("Devolver libro prestado")|eleccion.equals("Devolver libro prestado")){
                             System.out.println("¿Qué libro desea devolver?");
                             try {
                                 String eleDev = sc.nextLine();
-                                Path devolverOrigen = Path.of("library/rental/"+numSocio+"/"+eleDev);
-                                if (!Files.exists(devolverOrigen)) {
-                                    //falta el codigo de mover los libros
+                                Path devolverOrigen = Path.of("src/library/rentals/"+numSocio+"/"+eleDev);
+                                Path devolverDestino = Path.of("src/library/books/"+eleDev);
+                                if (Files.exists(devolverOrigen)) {
+                                    Files.move(devolverOrigen, devolverDestino, ATOMIC_MOVE, REPLACE_EXISTING);
+                                    System.out.println("Ha devuelto el libro alquilado");
                                 }
                                 else{
                                     System.out.println("No ha alquilado este libro");
@@ -74,13 +96,16 @@ public class biblioteca {
                                 System.out.println("El libro introducido no es válido");
                                 e.printStackTrace();
                             }
+                        } else if (respuesta.equals("Salir")|eleccion.equals("Salir")) {
+                            System.exit(0);
                         }
                     }
-                } catch (Exception e) {
-                    e.printStackTrace();
                 }
                 terminado = true;
+            }catch (Exception e) {
+                e.printStackTrace();
             }
+            System.exit(1);
         }catch (Exception e){
             e.printStackTrace();
         }
